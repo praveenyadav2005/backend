@@ -1,7 +1,18 @@
+import { app } from "./app.js";
 import connect from "./db/index.js";
 import "dotenv/config"
 
-connect();
+const port = process.env.PORT || 8000;
+connect()
+.then(()=>{
+app.listen(port,()=>{
+    console.log(`Server is running on port ${port}`);
+});
+})
+.catch(err=>{
+    console.error(err);
+    process.exit(1);
+})
 
 
 
