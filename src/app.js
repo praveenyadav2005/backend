@@ -14,10 +14,9 @@ app.use(express.json({
 
 app.use(express.urlencoded({ 
     extended: true ,limit:"10kb"
-})); // for parsing application/x-www-form-urlencoded
+})); 
 
-app.use(express.static('public')); // serve static files from public directory  
+app.use(express.static('public'));   
 app.use(cookieParser());
-
 
 export { app };

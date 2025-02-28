@@ -4,5 +4,5 @@ class apiResponse {
         this.statusCode = statusCode;
         this.message = message;
     }
-}
+}     
 export {apiResponse}
