@@ -9,11 +9,11 @@ app.use(cors({
     credentials: true 
 }));
 app.use(express.json({
-    limit: "10kb",// limit
+    limit: "16kb",// limit
 }));
 
 app.use(express.urlencoded({ 
-    extended: true ,limit:"10kb"
+    extended: true ,limit:"16kb"
 })); 
 
 app.use(express.static('public'));   
