@@ -38,16 +38,10 @@ const registerUser = asyncHandler(async (req, res) => {
     throw new apiError("User with email or username already exits", 409);
 
   //* checking for multer file specially avatar
-
-  //   const localCoverImagePath = req.files?.coverImage?.[0]?.path ?? null;
   const localAvatarPath = req.files?.avatar[0]?.path;
   if (!localAvatarPath) throw new apiError("Avatar file is required", 400);
 
-  // if (req.files &&  Array.isArray(req.files.avatar) && req.files.avatar.length > 0) {
-  //    const localAvatarPath = req.files.avatar[0].path;
-  // }
-  // else throw new apiError("Avatar file is required", 400);
-
+  //   const localCoverImagePath = req.files?.coverImage?.[0]?.path ?? null;
   let localCoverImagePath;
   if (
     req.files &&
@@ -56,6 +50,7 @@ const registerUser = asyncHandler(async (req, res) => {
   ) {
     localCoverImagePath = req.files.coverImage[0].path;
   }
+
   //uploading files to cloudinary
   const avatar = await fileUploader(localAvatarPath);
   const coverImage = await fileUploader(localCoverImagePath);
@@ -164,4 +159,44 @@ const logoutUser = asyncHandler(async (req, res) => {
     .json(new apiResponse({}, 200, "Logged out successfully! "));
 });
 
-export { registerUser, loginUser, logoutUser };
+const refreshAccessToken = asyncHandler(async (req, res) => {
+  const incommingRefreshToken =
+    req.cookies.refreshToken || req.body.refreshToken;
+  if (!incommingRefreshToken)
+    throw new apiError("Refresh token is required", 400);
+ try {
+   const decodedToken = jwt.verify(
+     incommingRefreshToken,
+     process.env.REFRESH_TOKEN_SECRET
+   );
+   if (!decodedToken) throw new apiError("Refresh token is invalid", 400);
+ 
+   const user = await User.findById(decodedToken?._id);
+   if (!user) throw new apiError("Unauthorized access", 400);
+   if (incommingRefreshToken !== user.refreshToken)
+     throw new apiError("Unauthorized access", 400);
+ 
+   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+     user._id
+   );
+   const options = {
+     httpOnly: true,
+     secure: true,
+   };
+   res
+     .status(200)
+     .cookie("accessToken", accessToken, options)
+     .cookie("refreshoken", refreshToken, options)
+     .json(
+       new apiResponse(
+         { accessToken, refreshToken },
+         200,
+         "Access token refreshed successfully! "
+       )
+     );
+ } catch (error) {
+  throw new apiError("Invalid refesh token",401)
+ }
+});
+
+export { registerUser, loginUser, logoutUser, refreshAccessToken };
