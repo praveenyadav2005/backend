@@ -164,39 +164,150 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
     req.cookies.refreshToken || req.body.refreshToken;
   if (!incommingRefreshToken)
     throw new apiError("Refresh token is required", 400);
- try {
-   const decodedToken = jwt.verify(
-     incommingRefreshToken,
-     process.env.REFRESH_TOKEN_SECRET
-   );
-   if (!decodedToken) throw new apiError("Refresh token is invalid", 400);
- 
-   const user = await User.findById(decodedToken?._id);
-   if (!user) throw new apiError("Unauthorized access", 400);
-   if (incommingRefreshToken !== user.refreshToken)
-     throw new apiError("Unauthorized access", 400);
- 
-   const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
-     user._id
-   );
-   const options = {
-     httpOnly: true,
-     secure: true,
-   };
-   res
-     .status(200)
-     .cookie("accessToken", accessToken, options)
-     .cookie("refreshoken", refreshToken, options)
-     .json(
-       new apiResponse(
-         { accessToken, refreshToken },
-         200,
-         "Access token refreshed successfully! "
-       )
-     );
- } catch (error) {
-  throw new apiError("Invalid refesh token",401)
- }
+  try {
+    const decodedToken = jwt.verify(
+      incommingRefreshToken,
+      process.env.REFRESH_TOKEN_SECRET
+    );
+    if (!decodedToken) throw new apiError("Refresh token is invalid", 400);
+
+    const user = await User.findById(decodedToken?._id);
+    if (!user) throw new apiError("Unauthorized access", 400);
+    if (incommingRefreshToken !== user.refreshToken)
+      throw new apiError("Unauthorized access", 400);
+
+    const { accessToken, refreshToken } = await generateAccessAndRefreshTokens(
+      user._id
+    );
+    const options = {
+      httpOnly: true,
+      secure: true,
+    };
+    res
+      .status(200)
+      .cookie("accessToken", accessToken, options)
+      .cookie("refreshoken", refreshToken, options)
+      .json(
+        new apiResponse(
+          { accessToken, refreshToken },
+          200,
+          "Access token refreshed successfully! "
+        )
+      );
+  } catch (error) {
+    throw new apiError("Invalid refesh token", 401);
+  }
 });
 
-export { registerUser, loginUser, logoutUser, refreshAccessToken };
+const changePassword = asyncHandler(async (req, res) => {
+  const { oldPassword, newPassword } = req.body;
+  const user = await User.findById(req.user._id);
+  if (!user) throw new apiError("unauthorized access", 401);
+  const correctPassword = await user.isPasswordCorrect(oldPassword);
+  if (!correctPassword) throw new apiError("Old password is not correct", 401);
+  user.password = newPassword;
+  await user.save({ validateBeforeSave: false });
+  return;
+  res
+    .status(200)
+    .json(new apiResponse({}, 200, "Password changed successfully"));
+});
+
+const getCurrentUser = asyncHandler(async (req, res) => {
+  return res
+    .status(200)
+    .json(new apiResponse(req.user, 200, "user fetched successfully! "));
+});
+
+const updateAccountDetail = asyncHandler(async (req, res) => {
+  //verify that user is logged in by auth middleware
+  const { email, fullName } = req.body;
+  if (!email || !fullName)
+    throw new apiError("email and fullname are required ", 401);
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        email,
+        fullName,
+      },
+    },
+    { new: true }
+  ).select("-password");
+  if (!updatedUser) throw new apiError("unauthorized access");
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        updatedUser,
+        200,
+        "email and password updated successfully"
+      )
+    );
+});
+
+const updateAvatar = asyncHandler(async (req, res) => {
+  //verify that user is logged in by auth middleware
+  // file upload by multer middleware
+  const localAvatarPath = req.file?.path;
+  if (!localAvatarPath) throw new apiError("Avatar file is missing", 400);
+  const avatarUrl = await fileUploader(localAvatarPath);
+  if (!avatarUrl.url) throw new apiError("Error while uploading avatar file");
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        avatar: avatarUrl.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(updatedUser, 200, "Avatar file updated successfully! ")
+    );
+});
+
+const updateCoverImage = asyncHandler(async (req, res) => {
+  //verify that user is logged in by auth middleware
+  // file upload by multer middleware
+  const localCoverImagePath = req.file?.path;
+  if (!localCoverImagePath)
+    throw new apiError("CoverImage file is missing", 400);
+  const CoverImageUrl = await fileUploader(localCoverImagePath);
+  if (!CoverImageUrl.url)
+    throw new apiError("Error while uploading CoverImage file");
+  const updatedUser = await User.findByIdAndUpdate(
+    req.user._id,
+    {
+      $set: {
+        coverImage: CoverImageUrl.url,
+      },
+    },
+    { new: true }
+  ).select("-password");
+
+  return res
+    .status(200)
+    .json(
+      new apiResponse(
+        updatedUser,
+        200,
+        "CoverImage file updated successfully! "
+      )
+    );
+});
+export {
+  registerUser,
+  loginUser,
+  logoutUser,
+  refreshAccessToken,
+  changePassword,
+  getCurrentUser,
+  updateAccountDetail,
+  updateAvatar,
+  updateCoverImage,
+};
