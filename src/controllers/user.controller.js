@@ -311,6 +311,72 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     );
 });
 
+const getChannelProfile = asyncHandler(async (req, res) => {
+  const {username} = req.params
+  if(!username) throw new apiError("invalid username",400)
+    const channel = await User.aggregate([
+      {
+        $match: {
+          username: username?.trim(),
+        },
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          foreignField: "channel",
+          localField: "_id",
+          as: "subscribers",
+        },
+      },
+      {
+        $lookup: {
+          from: "subscriptions",
+          foreignField: "subscriber",
+          localField: "_id",
+          as: "subscribedTo",
+        },
+      },
+      {
+        $addFields: {
+          subscriberCount: {
+            $size: "$subscribers",
+          },
+          subscribedToCount: {
+            $size: "$subscribedTo",
+          },
+          isSubscribed: {
+            $cond: {
+              if: {
+                $in: [req.user?._id, "$subscribers.subscriber"],
+              },
+              then: true,
+              else: false,
+            },
+          },
+        },
+      },
+      {
+        $project:{
+          fullName:1,
+          email:1,
+          avatar:1,
+          coverImage:1,
+          username:1,
+          subscriberCount:1,
+          subscribedToCount:1,
+          isSubscribed:1
+        }
+      }
+    ]);
+
+    if (!channel || channel.length === 0) {
+      throw new apiError("Channel not found", 404);
+    }
+
+    return res
+      .status(200)
+      .json(new apiResponse(channel[0], 200, "Channel profile fetched successfully!"));
+})
 export {
   registerUser,
   loginUser,
@@ -321,4 +387,5 @@ export {
   updateAccountDetail,
   updateAvatar,
   updateCoverImage,
+  getChannelProfile
 };
