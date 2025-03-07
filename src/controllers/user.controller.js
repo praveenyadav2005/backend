@@ -3,6 +3,7 @@ import { apiError } from "../utils/apiError.js";
 import { apiResponse } from "../utils/apiResponse.js";
 import { User } from "../models/user.models.js";
 import { fileUploader } from "../utils/cloudinary.js";
+import {deleteFromCloudinary} from "../utils/deleteCloudinary.js";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -254,8 +255,9 @@ const updateAvatar = asyncHandler(async (req, res) => {
   if (!localAvatarPath) throw new apiError("Avatar file is missing", 400);
   const avatarUrl = await fileUploader(localAvatarPath);
   if (!avatarUrl.url) throw new apiError("Error while uploading avatar file");
+  const oldAvatarUrl = req.user.avatar;
   const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
+    req.user?._id,
     {
       $set: {
         avatar: avatarUrl.url,
@@ -263,6 +265,9 @@ const updateAvatar = asyncHandler(async (req, res) => {
     },
     { new: true }
   ).select("-password");
+
+  //deleting old avatar from cloudinary
+    await deleteFromCloudinary(oldAvatarUrl);
 
   return res
     .status(200)
@@ -280,8 +285,9 @@ const updateCoverImage = asyncHandler(async (req, res) => {
   const CoverImageUrl = await fileUploader(localCoverImagePath);
   if (!CoverImageUrl.url)
     throw new apiError("Error while uploading CoverImage file");
+  const oldCoverImageUrl = req.user.coverImage;
   const updatedUser = await User.findByIdAndUpdate(
-    req.user._id,
+    req.user?._id,
     {
       $set: {
         coverImage: CoverImageUrl.url,
@@ -290,6 +296,10 @@ const updateCoverImage = asyncHandler(async (req, res) => {
     { new: true }
   ).select("-password");
 
+  if(oldCoverImageUrl) {
+    //deleting old coverImage from cloudinary
+    await deleteFromCloudinary(oldCoverImageUrl);
+  }
   return res
     .status(200)
     .json(
@@ -300,6 +310,7 @@ const updateCoverImage = asyncHandler(async (req, res) => {
       )
     );
 });
+
 export {
   registerUser,
   loginUser,
