@@ -4,6 +4,7 @@ import { apiResponse } from "../utils/apiResponse.js";
 import { User } from "../models/user.models.js";
 import { fileUploader } from "../utils/cloudinary.js";
 import {deleteFromCloudinary} from "../utils/deleteCloudinary.js";
+import mongoose from "mongoose";
 
 const generateAccessAndRefreshTokens = async (userId) => {
   try {
@@ -376,6 +377,55 @@ const getChannelProfile = asyncHandler(async (req, res) => {
     return res
       .status(200)
       .json(new apiResponse(channel[0], 200, "Channel profile fetched successfully!"));
+})
+
+const getUserHistory = asyncHandler(async (req,res)=>{
+  const history = await User.aggregate([
+    {
+      $match:{
+        _id:new mongoose.Types.ObjectId(req.user?._id)
+      }
+    },
+    {
+      $lookup:{
+        from:"videos",
+        foreignField:"_id",
+        localField:"watchHistory",
+        as:"watchHistory",
+        pipeline:[
+          {
+            $lookup:{
+              from:"users",
+              foreignField:"_id",
+              localField:"owner",
+              as:"owner",
+              pipeline:[
+                {
+                  $project:{
+                    fullName:1,
+                    username:1,
+                    avatar:1
+                  }
+                }
+              ]
+            }
+          },
+          {
+            $addFields:{
+              owner:{
+                $first:"$owner"
+              }
+            }
+          }
+        ]
+      }
+    }
+  ])
+  if(!history)throw new apiError("Error while fetching history",500)
+
+  return res
+  .status(200)
+  .json(new apiResponse(history[0],200,"User history fetched successfully! "))
 })
 export {
   registerUser,
