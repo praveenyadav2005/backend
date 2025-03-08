@@ -3,7 +3,8 @@ import { registerUser ,loginUser,logoutUser, refreshAccessToken, changePassword,
   getCurrentUser,
   updateAccountDetail,
   updateAvatar,
-  updateCoverImage,getChannelProfile} from "../controllers/user.controller.js";
+  updateCoverImage,getChannelProfile,
+  getUserHistory} from "../controllers/user.controller.js";
 import {upload} from "../middlewares/multer.middleware.js"
 import {verifyJWT} from "../middlewares/auth.middleware.js"
 
@@ -25,7 +26,7 @@ router.route("/register").post(
 
 router.route("/login").post(loginUser)
 
-//*Secure routes
+// Secure routes
 router.route("/logout").post(verifyJWT,logoutUser)
 router.route("/refresh-token").post(refreshAccessToken)
 router.route("/password-change").patch(verifyJWT,changePassword)
@@ -33,7 +34,8 @@ router.route("/get-current-user").get(verifyJWT,getCurrentUser)
 router.route("/update-account").patch(verifyJWT,updateAccountDetail)
 router.route("/update-avatar").patch(verifyJWT,upload.single("avatar"),updateAvatar)
 router.route("/update-cover-image").patch(verifyJWT,upload.single("coverImage"),updateCoverImage)
-router.route("/get-channel-profile").get(verifyJWT,getChannelProfile);
+router.route("/get-channel-profile").get(verifyJWT,getChannelProfile)
+router.route("/get-history").get(verifyJWT,getUserHistory)
 
 
 export default router
